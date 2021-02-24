@@ -137,3 +137,16 @@ main{
 .winning-message.show{
     display: flex;
 }
+.turns{
+    position: absolute;
+    top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.green{
+    color: green;
+}
+.red{
+    color: red;
+}

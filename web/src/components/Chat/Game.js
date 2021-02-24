@@ -1,88 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import io from 'socket.io-client'
 
 let socket;
 
 const Game = () => {
+    
     const ENDPOINT = 'localhost:5000'
-    const [player, setPlayer] = useState()
-
-    const [value, setValue] = useState('')
-    const [messages, setMessages] = useState([])
-
-    const WINNIG_COMBINATIONS = [
-        [0,1,2],
-        [3,4,5],
-        [6,7,8],
-        [0,3,6],
-        [1,4,7],
-        [2,5,8],
-        [0,4,8],
-        [2,4,6],
-    ]
-    const X_CLASS = 'x'
-    const O_CLASS = 'o'
-    let circleTurn;
-    let cellElements;
-    const winningMessageElement = useRef()
-    const winningMessageTextElement = useRef()
-    const board = useRef()
-
-    const startGame = () =>{
-
-        circleTurn = false;
-        cellElements = document.querySelectorAll('.cell')
-        cellElements.forEach(i => {
-            i.classList.remove(X_CLASS)
-            i.classList.remove(O_CLASS)
-            i.removeEventListener('click', handleClick)
-            i.addEventListener('click', handleClick, {once: true})
-        })
-        setHoverClass()
-        winningMessageElement.current.classList.remove('show')
-    }
-
-    const handleClick = (e) => {
-        const cell = e.target
-        const currentClass = circleTurn ? O_CLASS : X_CLASS
-        placeMark(cell, currentClass)
-        if(checkWin(currentClass)){
-            endGame(false)
-        }else if(isDraw()){
-            endGame(true)
-        }else{
-            swapTurn()
-            setHoverClass()
-        }
-    }
-
-    const placeMark = (cell, currentClass) =>{
-        cell.classList.add(currentClass)
-    }
-    const swapTurn = () =>{
-        circleTurn = !circleTurn
-    }
-    const setHoverClass = () => {
-        board.current.classList.remove(X_CLASS)
-        board.current.classList.remove(O_CLASS)
-        circleTurn ? board.current.classList.add(O_CLASS) : board.current.classList.add(X_CLASS)
-    }
-
-    const checkWin = (currentClass) => WINNIG_COMBINATIONS.some(combination => combination.every(index => cellElements[index].classList.contains(currentClass)))
-
-    const isDraw = () => [...cellElements].every(cell => cell.classList.contains(X_CLASS) || cell.classList.contains(O_CLASS))
-    const endGame = (draw) =>{
-        if(draw){
-            winningMessageTextElement.current.innerText = 'Remis!'
-        }else{
-            winningMessageTextElement.current.innerText = `${circleTurn ? 'O wygrało!' : 'X Wygrał!'}`
-        }
-        winningMessageElement.current.classList.add('show')
-    }
-    useEffect(() => {
-        startGame()
-    },[])
-
+    const [player, setPlayer] = useState('Obserwator')
+    const [circleTurn, setCircleTurn] = useState(false)
+    // const [cellElements, setCellElements] = useState()
     useEffect(() =>{
         socket = io(ENDPOINT)
         return () =>{
@@ -90,33 +16,110 @@ const Game = () => {
         }
     },[])
 
-    // useEffect(() => {
-    // },[handleClick]) 
-
     useEffect(() => {
+        // setCellElements(document.querySelectorAll('.cell'))
         socket.on('player', (player) =>{
             setPlayer(player)
         })
+        socket.on('swapped', (turn) =>{
+            if(turn !== undefined){
+                setCircleTurn(turn)
+            }
+        })
+        socket.on('placed', (place) =>{
+            document.getElementById(place.cellid).classList.add(place.turn)
+        })
+        socket.on('endGame', (win) => {
+            endGame(win.draw, win.turn)
+        })
+        socket.on('restart', () =>{
+                startGame()
+        })
+
     },[])
-    console.log(player)
     
-    let messComp = messages.map(i => <li>{i}</li>)
+    
+    const X_CLASS = 'x'
+    const O_CLASS = 'o'
+
+    const winningMessageElement = useRef()
+    const winningMessageTextElement = useRef()
+    const board = useRef() 
+    let turnMessageElement = useRef()
+
+    const startGame = () =>{
+        setCircleTurn(false)
+        let cells = document.querySelectorAll('.cell');
+        // board.current.classList.remove(O_CLASS)
+        // board.current.classList.remove(X_CLASS)
+        for(let i =0; i < cells.length; i++){
+            let x = cells[i]
+            x.classList.remove(X_CLASS)
+            x.classList.remove(O_CLASS)
+        } //todo: cala plansza z serwera
+        winningMessageElement.current.classList.remove('show')
+    }
+
+    const handleClick = (e) => {
+        const cell = e.target
+        const currentClass = circleTurn ? O_CLASS : X_CLASS
+        if(player === currentClass){
+            placeMark(cell, currentClass)
+        }
+    }
+
+    const placeMark = (cell, currentClass) =>{
+        let place = {
+            cellid: cell.id,
+            turn: currentClass,
+        }
+        socket.emit('place',place)
+    }
+
+    const setHoverClass = () => {
+        board.current.classList.remove(X_CLASS)
+        board.current.classList.remove(O_CLASS)
+        player === 'o' ? board.current.classList.add(O_CLASS) : board.current.classList.add(X_CLASS)
+    }
+
+    const endGame = (draw, turn) =>{
+        if(draw){
+            winningMessageTextElement.current.innerText = 'Remis!'
+        }else{
+            winningMessageTextElement.current.innerText = `${turn == 'o' ? 'O wygrało!' : 'X Wygrał!'}`
+        }
+        winningMessageElement.current.classList.add('show')
+    }
+
+
+    useEffect(() => {
+        if(player){
+            startGame()
+            setHoverClass()
+        }
+    },[player])
+    let handleRestart = () =>{
+        socket.emit('restart')
+    }
+    let turnMessage = circleTurn 
+    ? 'O' 
+    : 'X'
+    let cells = Array.from(Array(9).keys())
+
+    cells = cells.map((i,index) => <div onClick={handleClick} id={index} className="cell"></div>)
+
     return ( 
         <>
+        <div className="turns">
+            <div ref={turnMessageElement}>{'Tura ' + turnMessage}</div>
+            <div>Grasz jako {player.toUpperCase()}</div>
+        </div>
         <div className="board" ref={board} id='board'>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div  className="cell"></div>
-            <div className="cell" ></div>
+            {cells}
         </div>
         <div className="winning-message " ref={winningMessageElement}>
             <div ref={winningMessageTextElement}></div>
-            <button onClick={startGame} id="restart">Restart</button>
+            <button onClick={handleRestart} id="restart">Restart</button>
         </div>
         </>
      );
