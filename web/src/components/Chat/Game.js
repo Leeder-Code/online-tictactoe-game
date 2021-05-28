@@ -1,14 +1,13 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client'
 
 let socket;
 
 const Game = () => {
     
-    const ENDPOINT = 'localhost:5000'
+    const ENDPOINT = 'http://192.168.0.11:8002' // serwer ip
     const [player, setPlayer] = useState('Obserwator')
     const [circleTurn, setCircleTurn] = useState(false)
-    // const [cellElements, setCellElements] = useState()
     useEffect(() =>{
         socket = io(ENDPOINT)
         return () =>{
@@ -17,7 +16,6 @@ const Game = () => {
     },[])
 
     useEffect(() => {
-        // setCellElements(document.querySelectorAll('.cell'))
         socket.on('player', (player) =>{
             setPlayer(player)
         })
@@ -50,8 +48,6 @@ const Game = () => {
     const startGame = () =>{
         setCircleTurn(false)
         let cells = document.querySelectorAll('.cell');
-        // board.current.classList.remove(O_CLASS)
-        // board.current.classList.remove(X_CLASS)
         for(let i =0; i < cells.length; i++){
             let x = cells[i]
             x.classList.remove(X_CLASS)

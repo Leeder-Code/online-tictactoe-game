@@ -4,7 +4,7 @@ const http = require('http')
 const router = require('./routes/router')
 // const cors = require('cors')
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8002;
 
 const app = express()
 const server = http.createServer(app)
@@ -80,12 +80,6 @@ io.on('connection', socket => {
         players = players.filter(i => i != socket.id)
     })
 
-
-
-    // socket.on('wyslij', (message, callback) => {
-    //     msg = message
-    //     console.log(msg)
-    // })
 })
 
 server.listen(PORT, () => console.log(`Server na ${PORT}`))
